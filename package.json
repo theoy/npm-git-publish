@@ -1,0 +1,56 @@
+{
+  "name": "npm-git-publish",
+  "version": "0.1.0-beta",
+  "description": "Dev tool to publish an NPM package to a remote Git repository, instead of a registry or CDN of tarballs",
+  "main": "lib/publish",
+  "typings": "lib/publish",
+  "scripts": {
+    "prepublish": "typings install && tsc",
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theoy/npm-git-publish.git"
+  },
+  "keywords": [
+    "npm",
+    "git",
+    "publish",
+    "registry",
+    "enterprise",
+    "private",
+    "bitbucket",
+    "github",
+    "gitlab",
+    "vso",
+    "visual",
+    "studio",
+    "online",
+    "team",
+    "services"
+  ],
+  "author": {
+    "name": "Theo Yaung",
+    "email": "theoy@outlook.com",
+    "url": "https://github.com/theoy/"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/theoy/npm-git-publish/issues"
+  },
+  "homepage": "https://github.com/theoy/npm-git-publish#readme",
+  "devDependencies": {
+    "chai": "^1.10.0",
+    "mocha": "^2.0.1",
+    "sinon": "^1.13.0",
+    "sinon-chai": "^2.8.0",
+    "typescript": "^1.8.7",
+    "typings": "^0.6.5"
+  },
+  "dependencies": {
+    "mkdirp": "^0.5.1",
+    "pify": "^2.3.0",
+    "rimraf": "^2.5.2",
+    "tar": "^2.2.1"
+  }
+}
