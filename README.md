@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/theoy/npm-git-publish.png?label=ready&title=Ready)](https://waffle.io/theoy/npm-git-publish)
 # npm-git-publish
 
 > Dev tool to publish an NPM package to a remote Git repository, instead of a
