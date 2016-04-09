@@ -1,10 +1,9 @@
-[![Stories in Ready](https://badge.waffle.io/theoy/npm-git-publish.png?label=ready&title=Ready)](https://waffle.io/theoy/npm-git-publish)
-# npm-git-publish
+# npm-git-publish [![Stories in Ready][board-badge]][waffle-board]
 
 > Dev tool to publish an NPM package to a remote Git repository, instead of a
 registry or CDN of tarballs. Useful alternative for private packages.
 
-NPM, for eons ([circa 2012][npmgitdocupdate]), has supported the ability to install from a Git
+NPM, for eons ([circa 2012][npm-doc-update-git-support]), has supported the ability to install from a Git
 URL. Installing from a Git URL has many advantages, but as of yet NPM does
 not include the ability to publish to a Git URL/feed out of the box.
 
@@ -115,5 +114,6 @@ publish(packageDir,
     
 
 
-
-[npmgitdocupdate]: https://github.com/npm/npm/commit/3abab66be0c75d03ad6bbb089e0d3339d8525f44
+[npm-doc-update-git-support]: https://github.com/npm/npm/commit/3abab66be0c75d03ad6bbb089e0d3339d8525f44
+[board-badge]: https://badge.waffle.io/theoy/npm-git-publish.png?label=ready&title=Ready
+[waffle-board]: https://waffle.io/theoy/npm-git-publish
