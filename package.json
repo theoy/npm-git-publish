@@ -6,7 +6,7 @@
   "typings": "lib/publish",
   "scripts": {
     "prepublish": "typings install && tsc",
-    "test": "mocha"
+    "test": "tsc && mocha"
   },
   "repository": {
     "type": "git",
