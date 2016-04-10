@@ -50,7 +50,9 @@
   "dependencies": {
     "mkdirp": "^0.5.1",
     "pify": "^2.3.0",
+    "read-pkg": "^1.1.0",
     "rimraf": "^2.5.2",
-    "tar": "^2.2.1"
+    "tar": "^2.2.1",
+    "unique-temp-dir": "^1.0.0"
   }
 }
