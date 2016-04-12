@@ -92,6 +92,7 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     // now do the update and push (if applicable)
     return replaceRepoWithPackContents()
         .then(stageAllRepoChanges)
+        .then(queryRepoStatus)
         .then((hasChanges) => {
             if (!hasChanges) {
                 return cleanUpAndReturnChanged();
@@ -143,8 +144,11 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     }
 
     function stageAllRepoChanges() {
-        return exec(`git add --all`, { cwd: gitRepoDir })
-            .then(() => exec(`git status --porcelain`, { cwd: gitRepoDir }))
+        return exec(`git add --all`, { cwd: gitRepoDir });
+    }
+
+    function queryRepoStatus() {
+        return exec(`git status --porcelain`, { cwd: gitRepoDir })
             .then((statusOutput) => {
                 return statusOutput.trim().length !== 0;
             });
