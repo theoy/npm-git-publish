@@ -29,16 +29,17 @@ interface Params {
 }
 
 interface Result {
-    conclusion: 'pushed' | 'cancelled' | 'skipped'
+    conclusion: publishExport.Conclusions
 }
 
+export default publishExport;
 // new overload
-export default function publishExport(packageDir: string,
+function publishExport(packageDir: string,
     gitRemoteUrl: string,
     options?: Options): Promise<Result>;
 
 // old deprecated overload
-export default function publishExport(packageDir: string,
+function publishExport(packageDir: string,
     gitRemoteUrl: string,
     commitText: string,
     tagName: string,
@@ -46,7 +47,7 @@ export default function publishExport(packageDir: string,
     tempDir: string,
     packageInfo: PackageInfo): Promise<boolean>;
 
-export default function publishExport(packageDir: string,
+function publishExport(packageDir: string,
     gitRemoteUrl: string,
     options?: string | Options,
     tagName?: string,
@@ -69,6 +70,13 @@ export default function publishExport(packageDir: string,
         return provideDefaults(packageDir, gitRemoteUrl, options)
             .then(params => publish(packageDir, gitRemoteUrl, params));
     }
+}
+
+namespace publishExport {
+    export const PUSHED : 'pushed' = 'pushed',
+        SKIPPED : 'skipped' = 'skipped',
+        CANCELLED : 'cancelled' = 'cancelled';
+    export type Conclusions = typeof PUSHED | typeof SKIPPED | typeof CANCELLED;
 }
 
 function publish(packageDir: string, gitRemoteUrl: string, params: Params): Promise<Result> {
