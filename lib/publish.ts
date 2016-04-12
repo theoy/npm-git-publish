@@ -21,9 +21,9 @@ interface Options {
 }
 
 interface Params {
-    commitText: string;
-    tagName: string;
-    tagMessageText: string;
+    commitTextOp: Promise<string>;
+    tagNameOp: Promise<string>;
+    tagMessageTextOp: Promise<string>;
     tempDir: string;
     packageInfo: PackageInfo;
 }
@@ -58,9 +58,9 @@ function publishExport(packageDir: string,
     if (typeof options === 'string') {
         // using the deprecated overload
         return publish(packageDir, gitRemoteUrl, {
-            commitText: options,
-            tagName: tagName,
-            tagMessageText: tagMessageText,
+            commitTextOp: Promise.resolve(options),
+            tagNameOp: Promise.resolve(tagName),
+            tagMessageTextOp: Promise.resolve(tagMessageText),
             tempDir: tempDir,
             packageInfo: packageInfo
         })
@@ -90,8 +90,10 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     // launch setup operations
     const initialCleanDone = rimraf(params.tempDir, { glob: false });
     const directoryReady = initialCleanDone.then(() => mkdirp(packDir));
-    const commitTextWritten = directoryReady.then(() => writeFile(commitTextPath, params.commitText));
-    const tagTextWritten = directoryReady.then(() => writeFile(tagTextPath, params.tagMessageText));
+    const commitTextWritten = Promise.all([params.commitTextOp, directoryReady])
+        .then(([commitText]) => writeFile(commitTextPath, commitText));
+    const tagTextWritten = Promise.all([params.tagMessageTextOp, directoryReady])
+        .then(([tagMessageText]) => writeFile(tagTextPath, tagMessageText));
 
     // simultaneously ask NPM to pack up the package dir and create a clone of the remote URL
     const tarballCreated = packPackageIntoTarball();
@@ -148,7 +150,7 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
         const doneCleaning = doneCloning.then(() => rimraf(cleanPattern, cleanOptions));
 
         return Promise.all<any>([tarballCreated, doneCleaning])
-            .then((results: [string]) => unpack(results[0], gitRepoDir));
+            .then(([tarballPath] : [string]) => unpack(tarballPath, gitRepoDir));
     }
 
     function stageAllRepoChanges() {
@@ -168,8 +170,8 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     }
 
     function tagLastCommit() {
-        const tagCommandText = `git tag --annotate --file="${tagTextPath}" "${params.tagName}"`;
-        return tagTextWritten.then(() => exec(tagCommandText, { cwd: gitRepoDir }));
+        return Promise.all([params.tagNameOp, tagTextWritten])
+            .then(([tagName]) => exec(`git tag --annotate --file="${tagTextPath}" "${tagName}"`, { cwd: gitRepoDir }));
     }
 
     function pushDefaultBranch() {
@@ -187,15 +189,17 @@ function provideDefaults(packageDir: string, gitRemoteUrl: string, options?: Opt
         return readPkg(packageDir).then(provideRemainingDefaults);
     }
 
-    function provideRemainingDefaults(packageInfo: PackageInfo) : Options {
-        const version = packageInfo.version,
-            commitText = options.commitText || `release: version ${version}`;
+    function provideRemainingDefaults(packageInfo: PackageInfo) : Params {
+        const versionOp = Promise.resolve(packageInfo.version),
+            commitTextOp = options.commitText ? Promise.resolve(options.commitText) :
+                versionOp.then(version => `release: version ${version}`);
 
         return {
-            commitText: commitText,
-            tagMessageText: options.tagMessageText || commitText,
-            tagName: options.tagName || `v${version}`,
-            tempDir: options.tempDir || require('unique-temp-dir')()
+            commitTextOp: commitTextOp,
+            tagMessageTextOp: options.tagMessageText ? Promise.resolve(options.tagMessageText) : commitTextOp,
+            tagNameOp: options.tagName ? Promise.resolve(options.tagName) : versionOp.then(version => `v${version}`),
+            tempDir: options.tempDir || require('unique-temp-dir')() as string,
+            packageInfo: packageInfo
         };
     }
 }
