@@ -113,10 +113,10 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
 
     function packPackageIntoTarball() {
         return directoryReady
-            .then(() => exec('npm pack "' + packageDir + '"', { cwd: packDir }))
+            .then(() => exec(`npm pack "${packageDir}"`, { cwd: packDir }))
             .then((packCommandOutput) => {
                 // pack succeeded! Schedule a cleanup and return the full path
-                cleanupOperations.push(exec('npm cache clean ' + params.packageInfo.name + '@' + params.packageInfo.version));
+                cleanupOperations.push(exec(`npm cache clean ${params.packageInfo.name}@${params.packageInfo.version}`));
                 const packFileName = packCommandOutput.replace(/\r\n|\r|\n/g, '');
                 return path.join(packDir, packFileName);
             });
@@ -124,7 +124,7 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
 
     function cloneRemoteToTempRepo() {
         return initialCleanDone.then(() => {
-            execSync('git clone --quiet --depth 1 ' + gitRemoteUrl + ' "' + gitRepoDir + '"', { stdio: 'inherit' });
+            execSync(`git clone --quiet --depth 1 ${gitRemoteUrl} "${gitRepoDir}"`, { stdio: 'inherit' });
         });
     }
 
@@ -143,25 +143,25 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     }
 
     function stageAllRepoChanges() {
-        return exec('git add --all', { cwd: gitRepoDir })
-            .then(() => exec('git status --porcelain', { cwd: gitRepoDir }))
+        return exec(`git add --all`, { cwd: gitRepoDir })
+            .then(() => exec(`git status --porcelain`, { cwd: gitRepoDir }))
             .then((statusOutput) => {
                 return statusOutput.trim().length !== 0;
             });
     }
 
     function commitChanges() {
-        const commitCommandText = 'git commit --file="' + commitTextPath + '" --allow-empty-message --no-verify';
+        const commitCommandText = `git commit --file="${commitTextPath}" --allow-empty-message --no-verify`;
         return commitTextWritten.then(() => exec(commitCommandText, { cwd: gitRepoDir }));
     }
 
     function tagLastCommit() {
-        const tagCommandText = 'git tag --annotate --file="' + tagTextPath + '" "' + params.tagName + '"';
+        const tagCommandText = `git tag --annotate --file="${tagTextPath}" "${params.tagName}"`;
         return tagTextWritten.then(() => exec(tagCommandText, { cwd: gitRepoDir }));
     }
 
     function pushDefaultBranch() {
-        execSync('git push --follow-tags origin HEAD', { cwd: gitRepoDir, stdio: 'inherit' });
+        execSync(`git push --follow-tags origin HEAD`, { cwd: gitRepoDir, stdio: 'inherit' });
     }
 }
 
@@ -177,12 +177,12 @@ function provideDefaults(packageDir: string, gitRemoteUrl: string, options?: Opt
 
     function provideRemainingDefaults(packageInfo: PackageInfo) : Options {
         const version = packageInfo.version,
-            commitText = options.commitText || 'release: version ' + version;
+            commitText = options.commitText || `release: version ${version}`;
 
         return {
             commitText: commitText,
             tagMessageText: options.tagMessageText || commitText,
-            tagName: options.tagName || 'v' + version,
+            tagName: options.tagName || `v${version}`,
             tempDir: options.tempDir || require('unique-temp-dir')()
         };
     }
