@@ -103,21 +103,14 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     return replaceRepoWithPackContents()
         .then(stageAllRepoChanges)
         .then(queryRepoStatus)
-        .then((hasChanges) => {
-            if (!hasChanges) {
-                return cleanUpAndReturnChanged();
-            } else {
-                return commitChanges()
-                    .then(tagLastCommit)
-                    .then(pushDefaultBranch)
-                    .then(cleanUpAndReturnChanged);
-            }
-
-            function cleanUpAndReturnChanged() {
-                cleanupOperations.push(rimraf(params.tempDir, { glob: false }));
-                return Promise.all(cleanupOperations).then(() => ({ conclusion: hasChanges ? 'pushed' : 'skipped' }));
-            }
-        });
+        .then(hasChanges => hasChanges ? commitChanges() : Promise.resolve())
+        .then(tagLastCommit)
+        .then(pushDefaultBranch)
+        .then(() => {
+            cleanupOperations.push(rimraf(params.tempDir, { glob: false }));
+            return Promise.all(cleanupOperations);
+        })
+        .then(() => ({ conclusion: 'pushed' }));
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // LOCAL HELPER FUNCTIONS
