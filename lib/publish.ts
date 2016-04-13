@@ -221,7 +221,7 @@ function createParams(packageDir: string, gitRemoteUrl: string, options?: Option
                     // now that we have a promise to listen on, observe it and re-read the version from
                     // package.json after it finishes (if the callback promise didn't result in error)
                     const readUpdatedVersionOp = callbackOp
-                        .then(() => readPkg(packageDir))
+                        .then(() => readPkg(tempPackagePath))
                         .then(updatedPackageInfo => updatedPackageInfo.version);
                     setVersionOp(readUpdatedVersionOp);
                 }
