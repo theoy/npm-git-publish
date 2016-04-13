@@ -16,16 +16,18 @@ interface Options {
     commitText?: string;
     tagName?: string;
     tagMessageText?: string;
-    tempDir?: string;
-    packageInfo?: PackageInfo;
+    prepublishCallback?: (tempPackagePath: string) => Promise<boolean>;
+    tempDir?: string;    
+    originalPackageInfo?: PackageInfo;
 }
 
 interface Params {
     commitTextOp: Promise<string>;
     tagNameOp: Promise<string>;
     tagMessageTextOp: Promise<string>;
+    prepublishCallback: (tempPackagePath: string) => Promise<boolean>;
     tempDir: string;
-    packageInfo: PackageInfo;
+    originalPackageInfo: PackageInfo;
 }
 
 interface Result {
@@ -61,13 +63,14 @@ function publishExport(packageDir: string,
             commitTextOp: Promise.resolve(options),
             tagNameOp: Promise.resolve(tagName),
             tagMessageTextOp: Promise.resolve(tagMessageText),
+            prepublishCallback: path => Promise.resolve(true),
             tempDir: tempDir,
-            packageInfo: packageInfo
+            originalPackageInfo: packageInfo
         })
-            .then(result => result.conclusion === 'pushed');
+            .then(result => result.conclusion === publishExport.PUSHED);
     } else {
         // otherwise assume they want the new overload
-        return provideDefaults(packageDir, gitRemoteUrl, options)
+        return createParams(packageDir, gitRemoteUrl, options)
             .then(params => publish(packageDir, gitRemoteUrl, params));
     }
 }
@@ -99,18 +102,25 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     const tarballCreated = packPackageIntoTarball();
     const doneCloning = cloneRemoteToTempRepo();
 
-    // now do the update and push (if applicable)
     return replaceRepoWithPackContents()
         .then(stageAllRepoChanges)
-        .then(queryRepoStatus)
-        .then(hasChanges => hasChanges ? commitChanges() : Promise.resolve())
-        .then(tagLastCommit)
-        .then(pushDefaultBranch)
-        .then(() => {
-            cleanupOperations.push(rimraf(params.tempDir, { glob: false }));
-            return Promise.all(cleanupOperations);
-        })
-        .then(() => ({ conclusion: 'pushed' }));
+        .then(() => params.prepublishCallback(gitRepoDir))
+        .then(shouldContinue => 
+            shouldContinue ? finishReleaseAndReturnResult() : cleanUpAndReturnChanged(publishExport.CANCELLED));
+        
+    function finishReleaseAndReturnResult() {
+        return stageAllRepoChanges()
+            .then(queryRepoStatus)
+            .then(hasChanges => hasChanges ? commitChanges() : Promise.resolve())
+            .then(tagLastCommit)
+            .then(pushDefaultBranch)
+            .then(() => cleanUpAndReturnChanged(publishExport.PUSHED));        
+    }
+
+    function cleanUpAndReturnChanged(conclusion: publishExport.Conclusions) {
+        cleanupOperations.push(rimraf(params.tempDir, { glob: false }));
+        return Promise.all(cleanupOperations).then(() => ({ conclusion: conclusion }));
+    }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // LOCAL HELPER FUNCTIONS
@@ -120,7 +130,7 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
             .then(() => exec(`npm pack "${packageDir}"`, { cwd: packDir }))
             .then((packCommandOutput) => {
                 // pack succeeded! Schedule a cleanup and return the full path
-                cleanupOperations.push(exec(`npm cache clean ${params.packageInfo.name}@${params.packageInfo.version}`));
+                cleanupOperations.push(exec(`npm cache clean ${params.originalPackageInfo.name}@${params.originalPackageInfo.version}`));
                 const packFileName = packCommandOutput.replace(/\r\n|\r|\n/g, '');
                 return path.join(packDir, packFileName);
             });
@@ -172,27 +182,63 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     }
 }
 
-function provideDefaults(packageDir: string, gitRemoteUrl: string, options?: Options) : Promise<Params> {
+function readPkg(packageDir: string) : Promise<PackageInfo> {
+    return require('read-pkg')(packageDir);
+}
+
+function createParams(packageDir: string, gitRemoteUrl: string, options?: Options) : Promise<Params> {
     options = options || {};
 
-    if (options.packageInfo) {
-        return Promise.resolve(provideRemainingDefaults(options.packageInfo));
+    // eagerly copy the provided options because we are about to do asynchronous work
+    const requestedCommitText = options.commitText,
+        requestedPrepublishCallback = options.prepublishCallback,
+        requestedTagName = options.tagName,
+        requestedTagMessageText = options.tagMessageText,
+        providedTempDirectory = options.tempDir;
+
+    if (options.originalPackageInfo) {
+        return Promise.resolve(provideRemainingDefaults(options.originalPackageInfo));
     } else {
-        const readPkg = require('read-pkg') as ((packageDir: string) => Promise<PackageInfo>);
         return readPkg(packageDir).then(provideRemainingDefaults);
     }
 
-    function provideRemainingDefaults(packageInfo: PackageInfo) : Params {
-        const versionOp = Promise.resolve(packageInfo.version),
-            commitTextOp = options.commitText ? Promise.resolve(options.commitText) :
+    function provideRemainingDefaults(originalPackageInfo: PackageInfo) : Params {
+        let prepublishCallback : (tempPackagePath: string) => Promise<boolean>;
+        let versionOp : Promise<string>;
+        if (!requestedPrepublishCallback) {
+            // default to no-op transform that just returns true to 'continue'
+            prepublishCallback = path => Promise.resolve(true);
+            versionOp = Promise.resolve(originalPackageInfo.version);
+        } else {
+            let callbackOp : Promise<boolean> = null;
+            let setVersionOp : (versionOp: Promise<string>) => void;
+            versionOp = new Promise(resolver => {
+                setVersionOp = resolver;
+            });
+            prepublishCallback = (tempPackagePath) => {
+                if (callbackOp === null) {
+                    callbackOp = requestedPrepublishCallback(tempPackagePath);
+                    // now that we have a promise to listen on, observe it and re-read the version from
+                    // package.json after it finishes (if the callback promise didn't result in error)
+                    const readUpdatedVersionOp = callbackOp
+                        .then(() => readPkg(packageDir))
+                        .then(updatedPackageInfo => updatedPackageInfo.version);
+                    setVersionOp(readUpdatedVersionOp);
+                }
+                return callbackOp;
+            }
+        }
+
+        const commitTextOp = requestedCommitText ? Promise.resolve(requestedCommitText) :
                 versionOp.then(version => `release: version ${version}`);
 
         return {
             commitTextOp: commitTextOp,
-            tagMessageTextOp: options.tagMessageText ? Promise.resolve(options.tagMessageText) : commitTextOp,
-            tagNameOp: options.tagName ? Promise.resolve(options.tagName) : versionOp.then(version => `v${version}`),
-            tempDir: options.tempDir || require('unique-temp-dir')() as string,
-            packageInfo: packageInfo
+            tagMessageTextOp: requestedTagMessageText ? Promise.resolve(requestedTagMessageText) : commitTextOp,
+            tagNameOp: requestedTagName ? Promise.resolve(requestedTagName) : versionOp.then(version => `v${version}`),
+            prepublishCallback: prepublishCallback,
+            tempDir: providedTempDirectory || require('unique-temp-dir')() as string,
+            originalPackageInfo: originalPackageInfo
         };
     }
 }
