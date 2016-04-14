@@ -1,7 +1,6 @@
 # npm-git-publish [![Stories in Ready][board-badge]][waffle-board]
 
-> Dev tool to publish an NPM package to a remote Git repository, instead of a
-registry or CDN of tarballs. Useful alternative for private packages.
+> Share/publish private packages using Git remotes!
 
 NPM, for eons ([circa 2012][npm-doc-update-git-support]), has supported the ability to install from a Git
 URL. Installing from a Git URL has many advantages, but as of yet NPM does
@@ -58,19 +57,20 @@ npm install -D npm-git-publish
 
 ## API
 
-```es6
+```
 import publish from 'npm-git-publish';
 
-publish(packageDir,
-        gitRemoteUrl,
-        commitText,
-        tagName,
-        tagMessageText,
-        tempDirectory,
-        packageInfo)
-    .then(didPublish => {
+publish(packageDir, gitRemoteUrl [, options] )
+    .then(result => {
         // respond to whether publishing occurred
         // (e.g. print something to stdout)
+        if (result.conclusion === publish.PUSHED) {
+
+        } else if (result.conclusion === publish.SKIPPED) {
+
+        } else if (result.conclusion === publish.CANCELLED) {
+
+        }
     });
 ```
 
@@ -84,23 +84,61 @@ publish(packageDir,
 
     The remote Git endpoint, formatted in a way consumable by `git clone`.
 
+* **options** (object)
+
+    Optional property bag of custom options, see below.
+
+## options
+
 * **commitText** (string)
 
-    Text for the commit, if publishing occurs (if the package has any
-    differences from the last release pushed to the provided Git URL)
+    Default: `` `release: version ${version}` `` (version from package.json)
+
+    Text for the commit, if the (possibly post-transformed) package has any
+    differences with the last commit at the default (HEAD) branch. The version
+    used to generate the default text will be read after any transforms are
+    run, if provided.
 
 * **tagName** (string)
 
-    String value to use for the tag name, if publishing occurs (if the package
-    has any differences from the last release pushed to the provided Git URL)
+    Default: `` `v${version}` `` (version from package.json)
+
+    String value to use for the tag name. The version used to generate the
+    default tag name will be read after any transforms are run, if provided.
 
 * **tagMessageText** (string)
+
+    Default: the same value as `commitText` (custom, if provided, else the
+    same default text)
 
     Message text to use for creating the annotated tag, if publishing occurs
     (if the package has any differences from the last release pushed to the
     provided Git URL)
 
+* **prepublishCallback** ( `(tempPackagePath: string) => Promise<boolean>` )
+
+    A custom callback function that can inspect/transform the final package
+    contents before it is committed/tagged/pushed. It is provided the path to
+    the generated temporary directory with the package contents on disk.
+    
+    The callback should return a promise that resolves to a boolean,
+    signalling whether publishing should continue. If the promise result is
+    falsy, then publishing is cancelled and the promise resolves in a
+    non-error state with the conclusion equal to the `CANCELLED` property.
+    
+    If the promise resolves to an error, or an error occurs on invocation,
+    then the error cascades and causes the publish operation to result
+    in a promise that is in the terminal error state.
+
+    If a callback is provided for this option, and the default behaviour
+    is requested to generate the tag name or commit text based on the
+    `version`, then those operations will be deferred until after the
+    callback concludes in order to allow for the callback to edit the
+    `package.json` version if desired.
+
 * **tempDirectory** (string)
+
+    Default: a generated unique directory from `os.tmpdir()`
 
     Path to a temporary working directory _**unique to this invocation**_.
     As a first step, the entire directory is removed, and intermediate files
@@ -108,10 +146,16 @@ publish(packageDir,
     here. If working on Windows, please ensure that sufficient path length
     is reserved.
 
-* **packageInfo** (object)
+* **originalPackageInfo** (object)
 
-    The `package.json` from `packageDir`, read into a Javascript object.
-    
+    Default: the current contents of your `package.json`
+
+    The `package.json` from `packageDir`, read into a Javascript object, if
+    you happened to already have it handy. Needed to remove the temporary
+    tarball from your npm cache, but the library can read it for you if
+    you didn't already have it, or are unsure if the contents no longer match
+    the state of the `package.json` on disk.
+
 
 
 [npm-doc-update-git-support]: https://github.com/npm/npm/commit/3abab66be0c75d03ad6bbb089e0d3339d8525f44

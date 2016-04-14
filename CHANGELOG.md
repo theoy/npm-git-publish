@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-beta
+* Support for optional parameters / default parameter behaviour
+* Support for new promise result (object with `conclusion` property)
+* Support for optional prepublish callback
+
 ## 0.1.0-beta
 * Supports basic scenarios
     * Takes a package directory and Git URL and publishes to it

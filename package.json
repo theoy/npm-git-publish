@@ -1,6 +1,6 @@
 {
   "name": "npm-git-publish",
-  "version": "0.1.0-beta",
+  "version": "0.2.0-beta",
   "description": "Dev tool to publish an NPM package to a remote Git repository, instead of a registry or CDN of tarballs",
   "main": "lib/publish",
   "typings": "lib/publish",
