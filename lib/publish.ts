@@ -7,17 +7,17 @@ import mkdirp from './wrappers/mkdirp'
 import rimraf from './wrappers/rimraf';
 import unpack from './unpack';
 
-interface PackageInfo {
+export interface PackageInfo {
     name: string;
     version: string
 }
 
-interface Options {
+export interface Options {
     commitText?: string;
     tagName?: string;
     tagMessageText?: string;
     prepublishCallback?: (tempPackagePath: string) => Promise<boolean>;
-    tempDir?: string;    
+    tempDir?: string;
     originalPackageInfo?: PackageInfo;
 }
 
@@ -30,18 +30,18 @@ interface Params {
     originalPackageInfo: PackageInfo;
 }
 
-interface Result {
-    conclusion: publishExport.Conclusions
+export interface Result {
+    conclusion: publish.Conclusions
 }
 
-export default publishExport;
+export default publish;
 // new overload
-function publishExport(packageDir: string,
+export function publish(packageDir: string,
     gitRemoteUrl: string,
     options?: Options): Promise<Result>;
 
 // old deprecated overload
-function publishExport(packageDir: string,
+export function publish(packageDir: string,
     gitRemoteUrl: string,
     commitText: string,
     tagName: string,
@@ -49,7 +49,7 @@ function publishExport(packageDir: string,
     tempDir: string,
     packageInfo: PackageInfo): Promise<boolean>;
 
-function publishExport(packageDir: string,
+export function publish(packageDir: string,
     gitRemoteUrl: string,
     options?: string | Options,
     tagName?: string,
@@ -59,7 +59,7 @@ function publishExport(packageDir: string,
 
     if (typeof options === 'string') {
         // using the deprecated overload
-        return publish(packageDir, gitRemoteUrl, {
+        return doPublish(packageDir, gitRemoteUrl, {
             commitTextOp: Promise.resolve(options),
             tagNameOp: Promise.resolve(tagName),
             tagMessageTextOp: Promise.resolve(tagMessageText),
@@ -67,22 +67,22 @@ function publishExport(packageDir: string,
             tempDir: tempDir,
             originalPackageInfo: packageInfo
         })
-            .then(result => result.conclusion === publishExport.PUSHED);
+            .then(result => result.conclusion === publish.PUSHED);
     } else {
         // otherwise assume they want the new overload
         return createParams(packageDir, gitRemoteUrl, options)
-            .then(params => publish(packageDir, gitRemoteUrl, params));
+            .then(params => doPublish(packageDir, gitRemoteUrl, params));
     }
 }
 
-namespace publishExport {
+export namespace publish {
     export const PUSHED : 'pushed' = 'pushed',
         SKIPPED : 'skipped' = 'skipped',
         CANCELLED : 'cancelled' = 'cancelled';
     export type Conclusions = typeof PUSHED | typeof SKIPPED | typeof CANCELLED;
 }
 
-function publish(packageDir: string, gitRemoteUrl: string, params: Params): Promise<Result> {
+function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Promise<Result> {
     const writeFile = pify(fs.writeFile),
         gitRepoDir = path.join(params.tempDir, 'repo'),
         packDir = path.join(params.tempDir, 'pack'),
@@ -105,19 +105,19 @@ function publish(packageDir: string, gitRemoteUrl: string, params: Params): Prom
     return replaceRepoWithPackContents()
         .then(stageAllRepoChanges)
         .then(() => params.prepublishCallback(gitRepoDir))
-        .then(shouldContinue => 
-            shouldContinue ? finishReleaseAndReturnResult() : cleanUpAndReturnChanged(publishExport.CANCELLED));
-        
+        .then(shouldContinue =>
+            shouldContinue ? finishReleaseAndReturnResult() : cleanUpAndReturnChanged(publish.CANCELLED));
+
     function finishReleaseAndReturnResult() {
         return stageAllRepoChanges()
             .then(queryRepoStatus)
             .then(hasChanges => hasChanges ? commitChanges() : Promise.resolve())
             .then(tagLastCommit)
             .then(pushDefaultBranch)
-            .then(() => cleanUpAndReturnChanged(publishExport.PUSHED));        
+            .then(() => cleanUpAndReturnChanged(publish.PUSHED));
     }
 
-    function cleanUpAndReturnChanged(conclusion: publishExport.Conclusions) {
+    function cleanUpAndReturnChanged(conclusion: publish.Conclusions) {
         cleanupOperations.push(rimraf(params.tempDir, { glob: false }));
         return Promise.all(cleanupOperations).then(() => ({ conclusion: conclusion }));
     }

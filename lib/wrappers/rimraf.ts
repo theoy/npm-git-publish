@@ -3,7 +3,7 @@ import * as _rimraf from 'rimraf';
 
 // Define an alternate options interface because the d.ts has a mistake where the last 4 props are marked as
 // required properties rather than optional
-const _options : _rimraf.Options = undefined;
+export const _options : _rimraf.Options = undefined;
 export interface Options {
     unlink?: typeof _options.unlink;
     chmod?: typeof _options.chmod;
