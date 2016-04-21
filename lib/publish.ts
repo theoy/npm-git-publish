@@ -128,12 +128,20 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
     function packPackageIntoTarball() {
         return directoryReady
             .then(() => exec(`npm pack "${packageDir}"`, { cwd: packDir }))
-            .then((packCommandOutput) => {
+            .then(() => {
                 // pack succeeded! Schedule a cleanup and return the full path
                 cleanupOperations.push(exec(`npm cache clean ${params.originalPackageInfo.name}@${params.originalPackageInfo.version}`));
-                const packFileName = packCommandOutput.replace(/\r\n|\r|\n/g, '');
-                return path.join(packDir, packFileName);
+                return path.join(packDir, computeTarballName());
             });
+    }
+
+    function computeTarballName() {
+        let name = params.originalPackageInfo.name;
+        if (name[0] === '@') {
+            // in generating tarball names, npm special-cases scoped packages.
+            name = name.substr(1).replace(/\//g, '-');
+        }
+        return `${name}-${params.originalPackageInfo.version}.tgz`;
     }
 
     function cloneRemoteToTempRepo() {
