@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.1-beta
+Fix #19 - package.json prepublish scripts can cause publish to fail
+
 ## 0.2.0-beta
 * Support for optional parameters / default parameter behaviour
 * Support for new promise result (object with `conclusion` property)
@@ -11,6 +14,6 @@
       in a way that matches `npm publish` or `npm pack`.
     * Supports creating a git tag to mark the release
     * Currently you provide all the information
-      (see API docs in README), doesn't decide anything for you.       
+      (see API docs in README), doesn't decide anything for you.
 * Simplest possible implementation for current design
     * All required parameters
