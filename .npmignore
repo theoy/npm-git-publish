@@ -1,6 +1,8 @@
 /.npmignore
 /.gitignore
 /**/*.ts
+!/**/*.d.ts
+/typings/
 /test/
 /tsconfig.json
 /typings.json
