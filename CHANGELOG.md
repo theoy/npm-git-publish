@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.2-beta
+Support type definitions (d.ts files) in published package
+
 ## 0.2.1-beta
 Fix #19 - package.json prepublish scripts can cause publish to fail
 
