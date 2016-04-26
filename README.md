@@ -1,4 +1,4 @@
-# npm-git-publish [![Stories in Ready][board-badge]][waffle-board]
+# npm-git-publish [![Stories in Ready][board-badge]][waffle-board] [![Linux Build Status][travis-badge]][travis-dashboard]
 
 > Share/publish private packages using Git remotes!
 
@@ -120,12 +120,12 @@ publish(packageDir, gitRemoteUrl [, options] )
     A custom callback function that can inspect/transform the final package
     contents before it is committed/tagged/pushed. It is provided the path to
     the generated temporary directory with the package contents on disk.
-    
+
     The callback should return a promise that resolves to a boolean,
     signalling whether publishing should continue. If the promise result is
     falsy, then publishing is cancelled and the promise resolves in a
     non-error state with the conclusion equal to the `CANCELLED` property.
-    
+
     If the promise resolves to an error, or an error occurs on invocation,
     then the error cascades and causes the publish operation to result
     in a promise that is in the terminal error state.
@@ -159,5 +159,10 @@ publish(packageDir, gitRemoteUrl [, options] )
 
 
 [npm-doc-update-git-support]: https://github.com/npm/npm/commit/3abab66be0c75d03ad6bbb089e0d3339d8525f44
+
 [board-badge]: https://badge.waffle.io/theoy/npm-git-publish.png?label=ready&title=Ready
 [waffle-board]: https://waffle.io/theoy/npm-git-publish
+
+[travis-badge]: https://travis-ci.org/theoy/npm-git-publish.svg?branch=master
+[travis-dashboard]: https://travis-ci.org/theoy/npm-git-publish
+
