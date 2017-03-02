@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3-beta
+Support extra GIT tags (actually branches, to be better movable) to set for the
+publication commit. These names can then be used as alternate version
+reference(s) on consumption side.
+
 ## 0.2.2-beta
 Support type definitions (d.ts files) in published package
 
