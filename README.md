@@ -106,6 +106,13 @@ publish(packageDir, gitRemoteUrl [, options] )
     String value to use for the tag name. The version used to generate the
     default tag name will be read after any transforms are run, if provided.
 
+* **extraBranchNames** (string[])
+
+    An array of custom GIT branch names used to annotate the commit of the
+    current publication, in addition to `tagName`. These names are movable,
+    can be reused in later publications again and may serve as additional
+    version references by consumers.
+
 * **tagMessageText** (string)
 
     Default: the same value as `commitText` (custom, if provided, else the

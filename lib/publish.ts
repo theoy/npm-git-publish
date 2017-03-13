@@ -15,6 +15,7 @@ export interface PackageInfo {
 export interface Options {
     commitText?: string;
     tagName?: string;
+    extraBranchNames?: string[];
     tagMessageText?: string;
     prepublishCallback?: (tempPackagePath: string) => Promise<boolean>;
     tempDir?: string;
@@ -23,7 +24,8 @@ export interface Options {
 
 interface Params {
     commitTextOp: Promise<string>;
-    tagNameOp: Promise<string>;
+    mainTagNameOp: Promise<string>;
+    extraBranchNames?: string[];
     tagMessageTextOp: Promise<string>;
     prepublishCallback: (tempPackagePath: string) => Promise<boolean>;
     tempDir: string;
@@ -61,7 +63,7 @@ export function publish(packageDir: string,
         // using the deprecated overload
         return doPublish(packageDir, gitRemoteUrl, {
             commitTextOp: Promise.resolve(options),
-            tagNameOp: Promise.resolve(tagName),
+            mainTagNameOp: Promise.resolve(tagName),
             tagMessageTextOp: Promise.resolve(tagMessageText),
             prepublishCallback: path => Promise.resolve(true),
             tempDir: tempDir,
@@ -181,12 +183,29 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
     }
 
     function tagLastCommit() {
-        return Promise.all([params.tagNameOp, tagTextWritten])
-            .then(([tagName]) => exec(`git tag --annotate --file="${tagTextPath}" "${tagName}"`, { cwd: gitRepoDir }));
+        return Promise.all([params.mainTagNameOp, tagTextWritten])
+            .then(([tagName]) => {
+                return exec(`git tag -a --file="${tagTextPath}" "${tagName}"`, { cwd: gitRepoDir })
+                .then(() => {
+                    let promises: Promise<string>[] = [];
+                    (params.extraBranchNames || []).forEach((extraBranchName) => {
+                        promises.push(exec(
+                            `git branch -f "${extraBranchName}" "${tagName}"`,
+                            { cwd: gitRepoDir }
+                        ));
+                    });
+
+                    return Promise.all(promises);
+                });
+            });
     }
 
     function pushDefaultBranch() {
-        execSync(`git push --follow-tags origin HEAD`, { cwd: gitRepoDir, stdio: 'inherit' });
+        const extraBranchNames = (params.extraBranchNames || []).join(' ');
+        execSync(
+            `git push --follow-tags origin HEAD ${extraBranchNames}`,
+            { cwd: gitRepoDir, stdio: 'inherit' }
+        );
     }
 }
 
@@ -243,7 +262,8 @@ function createParams(packageDir: string, gitRemoteUrl: string, options?: Option
         return {
             commitTextOp: commitTextOp,
             tagMessageTextOp: requestedTagMessageText ? Promise.resolve(requestedTagMessageText) : commitTextOp,
-            tagNameOp: requestedTagName ? Promise.resolve(requestedTagName) : versionOp.then(version => `v${version}`),
+            mainTagNameOp: requestedTagName ? Promise.resolve(requestedTagName) : versionOp.then(version => `v${version}`),
+            extraBranchNames: options.extraBranchNames,
             prepublishCallback: prepublishCallback,
             tempDir: providedTempDirectory || require('unique-temp-dir')() as string,
             originalPackageInfo: originalPackageInfo
