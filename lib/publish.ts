@@ -203,7 +203,7 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
     function pushDefaultBranch() {
         const extraBranchNames = (params.extraBranchNames || []).join(' ');
         execSync(
-            `git push --follow-tags origin HEAD ${extraBranchNames}`,
+            `git push --follow-tags --force origin HEAD ${extraBranchNames}`,
             { cwd: gitRepoDir, stdio: 'inherit' }
         );
     }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4-beta
+Bug fix: Using the `--force` option to push a moved branch (version tag) to remote, as
+required under certain circumstances.
+
 ## 0.2.3-beta
 Support extra GIT tags (actually branches, to be better movable) to set for the
 publication commit. These names can then be used as alternate version
