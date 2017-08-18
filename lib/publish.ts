@@ -14,6 +14,7 @@ export interface PackageInfo {
 
 export interface Options {
     commitText?: string;
+    branchName?: string;
     tagName?: string;
     extraBranchNames?: string[];
     tagMessageText?: string;
@@ -25,6 +26,7 @@ export interface Options {
 interface Params {
     commitTextOp: Promise<string>;
     mainTagNameOp: Promise<string>;
+    branchName?: string;
     extraBranchNames?: string[];
     tagMessageTextOp: Promise<string>;
     prepublishCallback: (tempPackagePath: string) => Promise<boolean>;
@@ -132,7 +134,7 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
             .then(() => exec(`npm pack "${packageDir}"`, { cwd: packDir }))
             .then(() => {
                 // pack succeeded! Schedule a cleanup and return the full path
-                cleanupOperations.push(exec(`npm cache clean ${params.originalPackageInfo.name}@${params.originalPackageInfo.version}`));
+                // cleanupOperations.push(exec(`npm cache clean ${params.originalPackageInfo.name}@${params.originalPackageInfo.version}`));
                 return path.join(packDir, computeTarballName());
             });
     }
@@ -149,6 +151,12 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
     function cloneRemoteToTempRepo() {
         return initialCleanDone.then(() => {
             execSync(`git clone --quiet --depth 1 ${gitRemoteUrl} "${gitRepoDir}"`, { stdio: 'inherit' });
+            if (params.branchName) {
+                execSync(
+                    `git checkout -B ${params.branchName}`,
+                    { cwd: gitRepoDir, stdio: 'inherit' }
+                );
+            }
         });
     }
 
@@ -221,7 +229,8 @@ function createParams(packageDir: string, gitRemoteUrl: string, options?: Option
         requestedPrepublishCallback = options.prepublishCallback,
         requestedTagName = options.tagName,
         requestedTagMessageText = options.tagMessageText,
-        providedTempDirectory = options.tempDir;
+        providedTempDirectory = options.tempDir,
+        requestedBranchName = options.branchName;
 
     if (options.originalPackageInfo) {
         return Promise.resolve(provideRemainingDefaults(options.originalPackageInfo));
@@ -263,6 +272,7 @@ function createParams(packageDir: string, gitRemoteUrl: string, options?: Option
             commitTextOp: commitTextOp,
             tagMessageTextOp: requestedTagMessageText ? Promise.resolve(requestedTagMessageText) : commitTextOp,
             mainTagNameOp: requestedTagName ? Promise.resolve(requestedTagName) : versionOp.then(version => `v${version}`),
+            branchName: options.branchName,
             extraBranchNames: options.extraBranchNames,
             prepublishCallback: prepublishCallback,
             tempDir: providedTempDirectory || require('unique-temp-dir')() as string,
