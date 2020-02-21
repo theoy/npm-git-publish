@@ -2,6 +2,7 @@ import { execSync, exec as _exec } from 'child_process';
 import * as path from 'path';
 import * as pify from 'pify';
 import * as fs from 'fs';
+import * as isGitUrl from 'is-git-url';
 
 import mkdirp from './wrappers/mkdirp'
 import rimraf from './wrappers/rimraf';
@@ -58,6 +59,11 @@ export function publish(packageDir: string,
     tagMessageText?: string,
     tempDir?: string,
     packageInfo?: PackageInfo): Promise<boolean | Result> {
+
+    if (!isGitUrl(gitRemoteUrl)) {
+        console.log('\nERROR: The given Git Repo URL is not valid\n');
+        return;
+    }
 
     if (typeof options === 'string') {
         // using the deprecated overload
