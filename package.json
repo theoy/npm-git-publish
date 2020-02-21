@@ -48,6 +48,7 @@
     "typings": "^0.6.5"
   },
   "dependencies": {
+    "is-git-url": "^1.0.0",
     "mkdirp": "^0.5.1",
     "pify": "^2.3.0",
     "read-pkg": "^1.1.0",
