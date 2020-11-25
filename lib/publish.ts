@@ -1,4 +1,4 @@
-import { execSync, exec as _exec } from 'child_process';
+import { execSync, exec as _exec, spawn } from 'child_process';
 import * as path from 'path';
 import * as pify from 'pify';
 import * as fs from 'fs';
@@ -148,7 +148,7 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
 
     function cloneRemoteToTempRepo() {
         return initialCleanDone.then(() => {
-            execSync(`git clone --quiet --depth 1 ${gitRemoteUrl} "${gitRepoDir}"`, { stdio: 'inherit' });
+            spawn(`git`, ['clone', '--quiet', '--depth', '1', gitRemoteUrl, gitRepoDir], { stdio: 'inherit' });
         });
     }
 
