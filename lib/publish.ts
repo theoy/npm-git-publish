@@ -132,7 +132,7 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
             .then(() => exec(`npm pack "${packageDir}"`, { cwd: packDir }))
             .then(() => {
                 // pack succeeded! Schedule a cleanup and return the full path
-                cleanupOperations.push(exec(`npm cache clean ${params.originalPackageInfo.name}@${params.originalPackageInfo.version}`));
+                cleanupOperations.push(exec(`npm cache clean --force`));
                 return path.join(packDir, computeTarballName());
             });
     }
