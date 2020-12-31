@@ -1,4 +1,4 @@
-import { execSync, exec as _exec, spawn } from 'child_process';
+import { exec as _exec, spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as pify from 'pify';
 import * as fs from 'fs';
@@ -84,6 +84,30 @@ export namespace publish {
     export type Conclusions = typeof PUSHED | typeof SKIPPED | typeof CANCELLED;
 }
 
+function run(cmd: string[], options?: Object) {
+  const [command, ...args] = cmd;
+  const defaults = { stdio: 'inherit' };
+  return spawn(command, args, options || defaults);
+}
+
+function parseOut(proc: ChildProcess): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let out = '';
+    console.log({proc})
+    proc.stdout && proc.stdout.on('data', (data: string) => {
+      out += data;
+    });
+    proc.on('exit', (code: number) => {
+      code && reject(code);
+      !code && resolve(out);
+    });
+    proc.on('close', (code: number) => {
+      code && reject(code);
+      !code && resolve(out);
+    });
+  });
+}
+
 function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Promise<Result> {
     const writeFile = pify(fs.writeFile),
         gitRepoDir = path.join(params.tempDir, 'repo'),
@@ -129,10 +153,12 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
 
     function packPackageIntoTarball() {
         return directoryReady
-            .then(() => exec(`npm pack "${packageDir}"`, { cwd: packDir }))
+            .then(() => run([`npm`, `pack`, `"${packageDir}"`], { cwd: packDir, stdio: 'inherit' }))
             .then(() => {
                 // pack succeeded! Schedule a cleanup and return the full path
-                cleanupOperations.push(exec(`npm cache clean ${params.originalPackageInfo.name}@${params.originalPackageInfo.version}`));
+                cleanupOperations.push(
+                  parseOut(run([`npm`, `cache`, `clean`, `${params.originalPackageInfo.name}@${params.originalPackageInfo.version}`]))
+                );
                 return path.join(packDir, computeTarballName());
             });
     }
@@ -148,7 +174,7 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
 
     function cloneRemoteToTempRepo() {
         return initialCleanDone.then(() => {
-            spawn(`git`, ['clone', '--quiet', '--depth', '1', gitRemoteUrl, gitRepoDir], { stdio: 'inherit' });
+            run([`git`, `clone`, `--quiet`, `--depth`, `1`, `${gitRemoteUrl}`, `${gitRepoDir}`]);
         });
     }
 
@@ -178,20 +204,22 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
     }
 
     function commitChanges() {
-        const commitCommandText = `git commit --file="${commitTextPath}" --allow-empty-message --no-verify`;
-        return commitTextWritten.then(() => exec(commitCommandText, { cwd: gitRepoDir }));
+        const commitCommand = [`git`, `commit`, `--file="${commitTextPath}"`, `--allow-empty-message`, `--no-verify`];
+        return commitTextWritten.then(() => run(commitCommand, { cwd: gitRepoDir }));
     }
 
     function tagLastCommit() {
         return Promise.all([params.mainTagNameOp, tagTextWritten])
             .then(([tagName]) => {
-                return exec(`git tag -a --file="${tagTextPath}" "${tagName}"`, { cwd: gitRepoDir })
+                return parseOut(run([`git`, `tag`, `-a`, `--file="${tagTextPath}"`, `"${tagName}"`], { cwd: gitRepoDir }))
                 .then(() => {
                     let promises: Promise<string>[] = [];
                     (params.extraBranchNames || []).forEach((extraBranchName) => {
-                        promises.push(exec(
-                            `git branch -f "${extraBranchName}" "${tagName}"`,
+                        promises.push(parseOut(
+                          run(
+                            [`git`, `branch`, `-f`, `"${extraBranchName}"`, `"${tagName}"`],
                             { cwd: gitRepoDir }
+                        )
                         ));
                     });
 
@@ -202,8 +230,8 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
 
     function pushDefaultBranch() {
         const extraBranchNames = (params.extraBranchNames || []).join(' ');
-        execSync(
-            `git push --follow-tags --force origin HEAD ${extraBranchNames}`,
+        run(
+            [`git`, `push`, `--follow-tags`, `--force`, `origin`, `HEAD`, `${extraBranchNames}`],
             { cwd: gitRepoDir, stdio: 'inherit' }
         );
     }
