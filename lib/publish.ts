@@ -93,7 +93,6 @@ function run(cmd: string[], options?: Object) {
 function parseOut(proc: ChildProcess): Promise<string> {
   return new Promise((resolve, reject) => {
     let out = '';
-    console.log({proc})
     proc.stdout && proc.stdout.on('data', (data: string) => {
       out += data;
     });
@@ -153,7 +152,7 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
 
     function packPackageIntoTarball() {
         return directoryReady
-            .then(() => run([`npm`, `pack`, `"${packageDir}"`], { cwd: packDir, stdio: 'inherit' }))
+            .then(() => run([`npm`, `pack`, `"${packageDir}"`], { cwd: packDir }))
             .then(() => {
                 // pack succeeded! Schedule a cleanup and return the full path
                 cleanupOperations.push(
