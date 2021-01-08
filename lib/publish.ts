@@ -1,4 +1,4 @@
-import { exec as _exec, spawn, ChildProcess } from 'child_process';
+import { exec as _exec, spawnSync, SpawnSyncReturns } from 'child_process';
 import * as path from 'path';
 import * as pify from 'pify';
 import * as fs from 'fs';
@@ -87,23 +87,13 @@ export namespace publish {
 function run(cmd: string[], options?: Object) {
   const [command, ...args] = cmd;
   const defaults = { stdio: 'inherit' };
-  return spawn(command, args, options || defaults);
+  return spawnSync(command, args, options || defaults);
 }
 
-function parseOut(proc: ChildProcess): Promise<string> {
+function parseOut(proc: SpawnSyncReturns<Buffer>): Promise<string> {
   return new Promise((resolve, reject) => {
-    let out = '';
-    proc.stdout && proc.stdout.on('data', (data: string) => {
-      out += data;
-    });
-    proc.on('exit', (code: number) => {
-      code && reject(code);
-      !code && resolve(out);
-    });
-    proc.on('close', (code: number) => {
-      code && reject(code);
-      !code && resolve(out);
-    });
+    proc.stderr && reject(proc.stderr.toString());
+    proc.stdout && resolve(proc.stdout.toString());
   });
 }
 
@@ -152,7 +142,7 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
 
     function packPackageIntoTarball() {
         return directoryReady
-            .then(() => run([`npm`, `pack`, `"${packageDir}"`], { cwd: packDir }))
+            .then(() => run([`npm`, `pack`, `${packageDir}`], { cwd: packDir }))
             .then(() => {
                 // pack succeeded! Schedule a cleanup and return the full path
                 cleanupOperations.push(
@@ -203,20 +193,20 @@ function doPublish(packageDir: string, gitRemoteUrl: string, params: Params): Pr
     }
 
     function commitChanges() {
-        const commitCommand = [`git`, `commit`, `--file="${commitTextPath}"`, `--allow-empty-message`, `--no-verify`];
+        const commitCommand = [`git`, `commit`, `--file=${commitTextPath}`, `--allow-empty-message`, `--no-verify`];
         return commitTextWritten.then(() => run(commitCommand, { cwd: gitRepoDir }));
     }
 
     function tagLastCommit() {
         return Promise.all([params.mainTagNameOp, tagTextWritten])
             .then(([tagName]) => {
-                return parseOut(run([`git`, `tag`, `-a`, `--file="${tagTextPath}"`, `"${tagName}"`], { cwd: gitRepoDir }))
+                return parseOut(run([`git`, `tag`, `-a`, `--file=${tagTextPath}`, `${tagName}`], { cwd: gitRepoDir }))
                 .then(() => {
                     let promises: Promise<string>[] = [];
                     (params.extraBranchNames || []).forEach((extraBranchName) => {
                         promises.push(parseOut(
                           run(
-                            [`git`, `branch`, `-f`, `"${extraBranchName}"`, `"${tagName}"`],
+                            [`git`, `branch`, `-f`, `${extraBranchName}`, `${tagName}`],
                             { cwd: gitRepoDir }
                         )
                         ));
